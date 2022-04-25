@@ -98,7 +98,7 @@
 사용예)상품테이블에서 판매가가 50만원이상인 제품을 조회하시오.
        Alias는 상품코드, 상품명, 분류명, 거래처명, 판매가격이고 판매가격이 큰 상품순
        으로 출력하시오.
-      (일반조건)
+      (일반조인)
        SELECT A.PROD_ID AS 상품코드,
               A.PROD_NAME AS 상품명,
               B.LPROD_NM AS 분류명,
@@ -125,26 +125,160 @@
   사용예) 2020년 상반기 거래처별 판매액집계를 구하시오.
        Alias는 거래처코드, 거래처명, 판매액합계
       
-       (일반조건)
+       (일반조인)
        SELECT A.PROD_BUYER AS 거래처코드,
               C.BUYER_NAME AS 거래처명,
               SUM(A.PROD_PRICE * B.CART_QTY) AS 판매액합계
          FROM PROD A, CART B, BUYER C
-        WHERE A.PROD_BUYER = C.BUYER_ID
-          AND A.PROD_ID = B.CART_PROD
-          AND TO_DATE(SUBSTR(B.CART_NO,1,8),'YYMMDD') BETWEEN TO_DATE('20200101') AND TO_DATE('20200630')
+        WHERE A.PROD_BUYER = C.BUYER_ID -- 조인조건(거래처추출)
+          AND A.PROD_ID = B.CART_PROD -- 조인조건(단가추출)
+          AND SUBSTR(B.CART_NO,1,8) BETWEEN '202001' AND '202006'
+         -- AND TO_DATE(SUBSTR(B.CART_NO,1,8),'YYMMDD') BETWEEN TO_DATE('20200101') AND TO_DATE('20200630')
           GROUP BY  A.PROD_BUYER,C.BUYER_NAME
-          ORDER BY 3 DESC;
+          ORDER BY 1;
           
           (ANSI JOIN)
           SELECT A.PROD_BUYER AS 거래처코드,
-              C.BUYER_NAME AS 거래처명,
-              SUM(A.PROD_PRICE * B.CART_QTY) AS 판매액합계
-         FROM PROD A
-    INNER JOIN CART B ON (A.PROD_ID = B.CART_PROD)
-    INNER JOIN BUYER C ON (A.PROD_BUYER = C.BUYER_ID)
-          AND TO_DATE(SUBSTR(B.CART_NO,1,8),'YYMMDD') BETWEEN TO_DATE('20200101') AND TO_DATE('20200630')
+                 C.BUYER_NAME AS 거래처명,
+                 SUM(A.PROD_PRICE * B.CART_QTY) AS 판매액합계
+            FROM PROD A
+      INNER JOIN CART B ON (A.PROD_ID = B.CART_PROD)
+      INNER JOIN BUYER C ON (A.PROD_BUYER = C.BUYER_ID)
+             AND TO_DATE(SUBSTR(B.CART_NO,1,8),'YYMMDD') BETWEEN TO_DATE('20200101') AND TO_DATE('20200630')
           GROUP BY  A.PROD_BUYER,C.BUYER_NAME
-          ORDER BY 3 DESC;
-        
+          ORDER BY 1;
           
+---------------------------------------------------------------------------------          
+2022-0425-01)         
+        
+    사용예) HR계정에서 미국 이외의 국가에 위치한 부서에 근무하는 사워정보를
+           조회하시오.
+           Alias는 사원번호,사원명,부서명,직무코드,주소
+           미국의 국가코드는'US'이다.
+           
+             SELECT A.EMPLOYEE_ID AS 사원번호,
+                    A.EMP_NAME AS 사원명,
+                    B.DEPARTMENT_NAME AS 부서명,
+                    A.JOB_ID AS 직무코드,
+                     C.STREET_ADDRESS ||' '|| C.CITY ||', '|| C.STATE_PROVINCE AS 주소
+             FROM HR.EMPLOYEES A, HR.DEPARTMENTS B, HR.LOCATIONS C
+             WHERE A.DEPARTMENT_ID = B.DEPARTMENT_ID --조인조건(부서추출)
+                AND  B.LOCATION_ID = C.LOCATION_ID --조인조건(해당 부서의 위치코드 추출)
+                AND  C.COUNTRY_ID != 'US';     
+    
+    사용예) 2020년 4월 거래처별 매입금액을 조회하시오.
+            Alias는 거래처코드, 거래처명,매입금액합계
+            (일반조인)
+            SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(C.PROD_COST*B.BUY_QTY) AS 매입금액합계
+              FROM BUYER A, BUYPROD B, PROD C
+             WHERE A.BUYER_ID = C.PROD_BUYER
+               AND B.BUY_PROD = C.PROD_ID
+               AND B.BUY_DATE BETWEEN TO_DATE('20200401') AND LAST_DAY('20200401')
+              GROUP BY A.BUYER_ID, A.BUYER_NAME
+              ORDER BY 1;
+              
+              (ANSI JOIN)
+              SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(C.PROD_COST*B.BUY_QTY) AS 매입금액합계
+              FROM PROD C
+            INNER JOIN BUYPROD B ON (B.BUY_PROD = C.PROD_ID AND 
+                                     B.BUY_DATE BETWEEN TO_DATE('20200401') AND LAST_DAY('20200401'))
+            INNER JOIN BUYER A ON (A.BUYER_ID = C.PROD_BUYER)
+              GROUP BY A.BUYER_ID, A.BUYER_NAME
+              ORDER BY 1;
+              
+    사용예) 2020년 4월 거래처별 매출금액을 조회하시오.
+            Alias는 거래처코드, 거래처명,매출금액합계  
+          (일반조인)
+           SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(C.PROD_PRICE*B.CART_QTY) AS 매출금액합계
+              FROM BUYER A, CART B, PROD C
+             WHERE A.BUYER_ID = C.PROD_BUYER
+               AND B.CART_PROD = C.PROD_ID
+               AND B.CART_NO LIKE '202004%'
+              GROUP BY A.BUYER_ID, A.BUYER_NAME
+              ORDER BY 1; 
+              
+            (ANSI JOIN)
+            SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(C.PROD_PRICE*B.CART_QTY) AS 매출금액합계
+              FROM PROD C
+        INNER JOIN BUYER A ON (A.BUYER_ID = C.PROD_BUYER) 
+        INNER JOIN CART B ON (B.CART_PROD = C.PROD_ID AND
+                   B.CART_NO LIKE '202004%')
+              GROUP BY A.BUYER_ID, A.BUYER_NAME
+              ORDER BY 1; 
+    
+    사용예) 2020년 4월 거래처별 매입/매출금액을 조회하시오.
+            Alias는 거래처코드, 거래처명,매입금액합계,매출금액합계 
+            (일반조인)
+            SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(D.PROD_COST*B.BUY_QTY) AS 매입금액합계,
+                   SUM(D.PROD_PRICE*C.CART_QTY) AS 매출금액합계
+              FROM BUYER A, BUYPROD B, CART C, PROD D
+             WHERE A.BUYER_ID = D.PROD_BUYER
+               AND B.BUY_PROD = D.PROD_ID
+               AND C.CART_PROD = D.PROD_ID
+               AND B.BUY_DATE BETWEEN TO_DATE('20200401') AND LAST_DAY('20200401')
+               AND C.CART_NO LIKE '202004%'
+          GROUP BY A.BUYER_ID, A.BUYER_NAME
+          ORDER BY 1;                         
+           
+            (ANSI JOIN)
+            SELECT A.BUYER_ID AS 거래처코드,
+                   A.BUYER_NAME AS 거래처명,
+                   SUM(D.PROD_COST*B.BUY_QTY) AS 매입금액합계,
+                   SUM(D.PROD_PRICE*C.CART_QTY) AS 매출금액합계
+              FROM BUYER A
+        INNER JOIN PROD D ON (A.BUYER_ID = D.PROD_BUYER)
+        INNER JOIN BUYPROD B ON (B.BUY_PROD = D.PROD_ID AND
+                                 B.BUY_DATE BETWEEN TO_DATE('20200401') AND LAST_DAY('20200401'))
+        INNER JOIN CART C ON (C.CART_PROD = D.PROD_ID AND 
+                              C.CART_NO LIKE '202004%')
+          GROUP BY A.BUYER_ID, A.BUYER_NAME
+          ORDER BY 1; 
+          
+          (해결책 : 서브쿼리 + 외부조인)
+         SELECT TB.CID AS 거래처코드,
+                TB.CNAME AS 거래처명,
+                NVL(TA.BSUM,0) AS 매입금액합계,
+                NVL(TB.CSUM,0) AS 매출금액합계    
+        FROM (SELECT C.PROD_BUYER AS BID,   --서브쿼리
+                   SUM(C.PROD_COST*B.BUY_QTY) AS BSUM
+              FROM BUYER A, BUYPROD B, PROD C
+             WHERE A.BUYER_ID = C.PROD_BUYER
+               AND B.BUY_PROD = C.PROD_ID
+               AND B.BUY_DATE BETWEEN TO_DATE('20200401') AND LAST_DAY('20200401')
+              GROUP BY C.PROD_BUYER) TA,
+            (SELECT A.BUYER_ID AS CID, --서브쿼리
+                   A.BUYER_NAME AS CNAME,
+                   SUM(C.PROD_PRICE*B.CART_QTY) AS CSUM
+              FROM BUYER A, CART B, PROD C
+             WHERE A.BUYER_ID = C.PROD_BUYER
+               AND B.CART_PROD = C.PROD_ID
+               AND B.CART_NO LIKE '202004%'
+              GROUP BY A.BUYER_ID, A.BUYER_NAME) TB
+       WHERE TA.BID(+) = TB.CID --외부조인조건
+    ORDER BY 1;
+    
+    사용예) 사원테이블에서 전체사원의 평균급여보다 더 많은 급여를 받는 사원을
+           조회하시오.
+           Alias는 사원번호, 사원명, 부서코드, 급여
+    SELECT A.EMPLOYEE_ID AS 사원번호,
+           A.EMP_NAME AS 사원명,
+           A.DEPARTMENT_ID AS 부서코드,
+           A.SALARY AS 급여
+      FROM HR.EMPLOYEES A,
+           (SELECT AVG(SALARY) AS BSAL
+              FROM HR.EMPLOYEES) B
+     WHERE A.SALARY > B.BSAL       
+    ORDER BY 3;
+           
+           
+              
