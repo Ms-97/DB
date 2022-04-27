@@ -104,16 +104,94 @@ INTERSECT
 (결합)
     SELECT DEPARTMENT_ID,
          DEPARTMENT_NAME,
-         0 AS PARENT_ID,
-         1 AS LEVELS
+         NVL(PARENT_ID,0) AS PARENT_ID,
+         1 AS LEVELS,
+         PARENT_ID||DEPARTMENT_ID AS TEMP
      FROM HR.DEPTS
     WHERE PARENT_ID IS NULL 
  UNION ALL
    SELECT B.DEPARTMENT_ID,
-         LPAD(' ',4*(2-1))||B.DEPARTMENT_NAME AS DEPARTMENT_NAME,
+         LPAD(' ',4*(2-1))||B.DEPARTMENT_NAME AS DEPARTMENT_NAME, --총무기획부(1) 나머지 (2) 총무기획부 4*(1-1)=0 
          B.PARENT_ID AS PARENT_ID,
-         2 AS LEVELS
-    FROM HR.DEPTS A, HR.DEPTS B
+         2 AS LEVELS,
+          B.PARENT_ID||B.DEPARTMENT_ID AS TEMP
+    FROM HR.DEPTS A, HR.DEPTS B --셀프조인
    WHERE A.PARENT_ID IS NULL
-     AND B.PARENT_ID= A.DEPARTMENT_ID; 
-     
+     AND B.PARENT_ID= A.DEPARTMENT_ID
+ UNION ALL
+   SELECT C.DEPARTMENT_ID,
+         LPAD(' ',4*(3-1))||C.DEPARTMENT_NAME AS DEPARTMENT_NAME,  
+         C.PARENT_ID AS PARENT_ID,
+         3 AS LEVELS,
+          B.PARENT_ID||C.PARENT_ID ||C.DEPARTMENT_ID AS TEMP
+    FROM HR.DEPTS A, HR.DEPTS B, HR.DEPTS C
+   WHERE A.PARENT_ID IS NULL
+     AND B.PARENT_ID= A.DEPARTMENT_ID
+     AND C.PARENT_ID= B.DEPARTMENT_ID
+     ORDER BY 5;
+   
+사용예) 장바구니테이블에서 4월과 6월에 판매된 모든 상품정보를 중복되지 않게 조회하시오
+       Alias는 상품번호,상품명,판매수량 이며 상품번호 순으로 출력하시오.
+       
+       SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명,
+              SUM(B.CART_QTY) AS 판매수량
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202004%'
+        GROUP BY A.PROD_ID, A.PROD_NAME
+UNION
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명,
+              SUM(B.CART_QTY) AS 판매수량
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202006%'
+        GROUP BY A.PROD_ID, A.PROD_NAME
+        ORDER BY 1;
+
+사용예) 장바구니테이블에서 4월에도 판매되고 6월에도 판매된 상품정보를 조회하시오
+       Alias는 상품번호,상품명이며 상품번호 순으로 출력하시오.
+        
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202004%'
+INTERSECT
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202006%'
+        ORDER BY 1;
+       
+ 
+사용예) 장바구니테이블에서 4월과 6월에도 판매된 상품 중 6월에만 판매된 상품정보를
+       조회하시오
+       Alias는 상품번호,상품명,판매수량 이며 상품번호 순으로 출력하시오.
+        
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명,
+              SUM(B.CART_QTY) AS 판매수량
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202004%'
+        GROUP BY A.PROD_ID, A.PROD_NAME
+UNION
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명,
+              SUM(B.CART_QTY) AS 판매수량
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202006%'
+        GROUP BY A.PROD_ID, A.PROD_NAME
+MINUS
+        SELECT A.PROD_ID AS 상품번호,
+              A.PROD_NAME AS 상품명,
+              SUM(B.CART_QTY) AS 판매수량
+         FROM PROD A, CART B
+        WHERE B.CART_PROD = A.PROD_ID 
+          AND SUBSTR(B.CART_NO,1,8) LIKE '202004%'
+        GROUP BY A.PROD_ID, A.PROD_NAME
+        ORDER BY 1;
