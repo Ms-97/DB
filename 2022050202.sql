@@ -96,4 +96,18 @@
    WHERE MEM_NAME='육평회';
    
    DROP INDEX IDX_MEM_NAME;
+   
+사용예) 
+    CREATE INDEX IDX_PROD
+      ON PROD(SUBSTR(PROD_ID,1,5)||SUBSTR(PROD_ID,9));
+      
+    SELECT * FROM PROD
+     WHERE SUBSTR(PROD_ID,1,5)||SUBSTR(PROD_ID,9)='P202013';
+     
+** 인덱스의 재구성
+ - 인덱스를 다른 테이블스페이스로 이동시키는 경우 
+ - 데이터테이블이 이동된경우 
+ - 삽입삭제가 다수 발생된 직후
+ ALTER 인덱스명 REBUILD;
+ 
   
